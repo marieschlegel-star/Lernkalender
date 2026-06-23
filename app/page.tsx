@@ -1,101 +1,176 @@
-import Image from "next/image";
+"use client";
 
-export default function Home() {
+import { useRef, useState, useCallback } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import FullCalendar from "@fullcalendar/react";
+import { format, getISOWeek } from "date-fns";
+import { de } from "date-fns/locale";
+
+import { LeftSidebar } from "@/components/left-sidebar";
+import { RightSidebar } from "@/components/right-sidebar";
+import { CalendarViewComponent } from "@/components/calendar-view";
+import { Topbar } from "@/components/topbar";
+import { SessionPanel } from "@/components/session-panel";
+import { useAppStore } from "@/lib/store";
+import {
+  DUMMY_SESSIONS,
+  DUMMY_KLAUSUREN,
+  DUMMY_TODOS,
+  DUMMY_POMODOROS,
+} from "@/lib/dummy-data";
+import type { LernSession, Klausur, Todo, GCalEvent } from "@/lib/types";
+
+// Set to true to use Notion API, false for dummy data
+const USE_NOTION = process.env.NEXT_PUBLIC_USE_NOTION === "true";
+
+export default function HomePage() {
+  const calRef = useRef<FullCalendar>(null);
+  const qc = useQueryClient();
+  const { selectedSessionId, setSelectedSessionId, calendarView } = useAppStore();
+  const [calTitle, setCalTitle] = useState("KW 26 · Juni 2026");
+
+  // ─── Data ─────────────────────────────────────────────────────────
+  const { data: sessions = DUMMY_SESSIONS } = useQuery<LernSession[]>({
+    queryKey: ["sessions"],
+    queryFn: async () => {
+      if (!USE_NOTION) return DUMMY_SESSIONS;
+      const res = await fetch("/api/notion/sessions");
+      return res.ok ? res.json() : DUMMY_SESSIONS;
+    },
+  });
+
+  const { data: klausuren = DUMMY_KLAUSUREN } = useQuery<Klausur[]>({
+    queryKey: ["klausuren"],
+    queryFn: async () => {
+      if (!USE_NOTION) return DUMMY_KLAUSUREN;
+      const res = await fetch("/api/notion/klausuren");
+      return res.ok ? res.json() : DUMMY_KLAUSUREN;
+    },
+  });
+
+  const { data: todos = DUMMY_TODOS } = useQuery<Todo[]>({
+    queryKey: ["todos"],
+    queryFn: async () => {
+      if (!USE_NOTION) return DUMMY_TODOS;
+      const res = await fetch("/api/notion/todos");
+      return res.ok ? res.json() : DUMMY_TODOS;
+    },
+  });
+
+  const gcalEvents: GCalEvent[] = [];
+
+  // ─── Mutations ────────────────────────────────────────────────────
+  const updateSessionDate = useMutation({
+    mutationFn: async ({ id, date }: { id: string; date: string }) => {
+      if (!USE_NOTION) return;
+      await fetch("/api/notion/sessions", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id, date }),
+      });
+    },
+    onMutate: async ({ id, date }) => {
+      await qc.cancelQueries({ queryKey: ["sessions"] });
+      const prev = qc.getQueryData<LernSession[]>(["sessions"]);
+      qc.setQueryData<LernSession[]>(["sessions"], (old) =>
+        old?.map((s) => (s.id === id ? { ...s, date } : s)) ?? []
+      );
+      return { prev };
+    },
+    onError: (_e, _v, ctx) => {
+      if (ctx?.prev) qc.setQueryData(["sessions"], ctx.prev);
+    },
+  });
+
+  const completeTodo = useMutation({
+    mutationFn: async ({ id, completed }: { id: string; completed: boolean }) => {
+      if (!USE_NOTION) return;
+      await fetch("/api/notion/todos", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id, completed }),
+      });
+    },
+    onMutate: async ({ id, completed }) => {
+      await qc.cancelQueries({ queryKey: ["todos"] });
+      const prev = qc.getQueryData<Todo[]>(["todos"]);
+      qc.setQueryData<Todo[]>(["todos"], (old) =>
+        old?.map((t) => (t.id === id ? { ...t, completed } : t)) ?? []
+      );
+      return { prev };
+    },
+    onError: (_e, _v, ctx) => {
+      if (ctx?.prev) qc.setQueryData(["todos"], ctx.prev);
+    },
+  });
+
+  // ─── Handlers ─────────────────────────────────────────────────────
+  const handleSessionDrop = useCallback(
+    (sessionId: string, newDate: string) => {
+      updateSessionDate.mutate({ id: sessionId, date: newDate });
+    },
+    [updateSessionDate]
+  );
+
+  const handleDatesSet = useCallback(
+    (info: any) => {
+      const start: Date = info.start;
+      const kw = getISOWeek(start);
+      if (info.view.type === "timeGridDay") {
+        setCalTitle(format(start, "EEEE, dd. MMMM yyyy", { locale: de }));
+      } else if (info.view.type === "dayGridMonth") {
+        setCalTitle(format(start, "MMMM yyyy", { locale: de }));
+      } else {
+        setCalTitle(`KW ${kw} · ${format(start, "MMMM yyyy", { locale: de })}`);
+      }
+    },
+    []
+  );
+
+  const selectedSession = sessions.find((s) => s.id === selectedSessionId) ?? null;
+
   return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-8 row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="https://nextjs.org/icons/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-semibold">
-              app/page.tsx
-            </code>
-            .
-          </li>
-          <li>Save and see your changes instantly.</li>
-        </ol>
+    <div className="flex h-screen bg-[#F8F9FB] overflow-hidden">
+      {/* Left Sidebar */}
+      <LeftSidebar sessions={sessions} todos={todos} />
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="https://nextjs.org/icons/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:min-w-44"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+      {/* Main */}
+      <main className="flex flex-col flex-1 min-w-0 overflow-hidden bg-white border-x border-border">
+        <Topbar calRef={calRef} title={calTitle} onNewLernblock={() => {}} />
+        <div className="flex-1 overflow-hidden">
+          <CalendarViewComponent
+            calRef={calRef}
+            sessions={sessions}
+            klausuren={klausuren}
+            todos={todos}
+            gcalEvents={gcalEvents}
+            view={calendarView}
+            onSessionDrop={handleSessionDrop}
+            onEventClick={(id) => setSelectedSessionId(id)}
+            onDatesSet={handleDatesSet}
+          />
         </div>
       </main>
-      <footer className="row-start-3 flex gap-6 flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="https://nextjs.org/icons/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
+
+      {/* Right Sidebar */}
+      <div className="relative w-[260px] shrink-0 bg-white">
+        {selectedSession ? (
+          <SessionPanel
+            session={selectedSession}
+            klausuren={klausuren}
+            pomodoros={DUMMY_POMODOROS}
+            onClose={() => setSelectedSessionId(null)}
           />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="https://nextjs.org/icons/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
+        ) : (
+          <RightSidebar
+            klausuren={klausuren}
+            todos={todos}
+            sessions={sessions}
+            pomodoros={DUMMY_POMODOROS}
+            onTodoComplete={(id) => completeTodo.mutate({ id, completed: true })}
           />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="https://nextjs.org/icons/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
+        )}
+      </div>
     </div>
   );
 }

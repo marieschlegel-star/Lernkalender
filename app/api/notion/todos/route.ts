@@ -1,0 +1,52 @@
+import { NextResponse } from "next/server";
+import { Client } from "@notionhq/client";
+import type { Todo, TodoKategorie } from "@/lib/types";
+
+const notion = new Client({ auth: process.env.NOTION_API_KEY });
+
+export async function GET() {
+  try {
+    const dbId = process.env.NOTION_TODO_DB_ID;
+    if (!dbId) return NextResponse.json({ error: "DB ID missing" }, { status: 500 });
+
+    const response = await notion.databases.query({
+      database_id: dbId,
+      page_size: 100,
+    });
+
+    const todos: Todo[] = response.results.map((page: any) => {
+      const p = page.properties;
+      return {
+        id: page.id,
+        name: p.Name?.title?.[0]?.plain_text ?? "Ohne Titel",
+        date: p.Dat?.date?.start ?? null,
+        completed: p.Kontrollkästchen?.checkbox ?? false,
+        kategorie: (p.Auswählen?.select?.name as TodoKategorie) ?? null,
+        kat: p.kat?.select?.name ?? null,
+        lernplanIds: p.Lernplan?.relation?.map((r: any) => r.id) ?? [],
+      };
+    });
+
+    return NextResponse.json(todos);
+  } catch (error: any) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+}
+
+export async function PATCH(req: Request) {
+  try {
+    const { id, completed } = await req.json();
+    if (!id) return NextResponse.json({ error: "ID required" }, { status: 400 });
+
+    await notion.pages.update({
+      page_id: id,
+      properties: {
+        Kontrollkästchen: { checkbox: completed },
+      },
+    });
+
+    return NextResponse.json({ success: true });
+  } catch (error: any) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+}
