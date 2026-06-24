@@ -92,6 +92,7 @@ function KlausurenWidget({ klausuren }: { klausuren: Klausur[] }) {
 
 // ─── Lernfortschritt Widget ─────────────────────────────────────────
 const FACH_LIST: Fach[] = ["ZPO", "ZivR", "StrafR", "VwR", "StPO", "VwGO", "ZPO III"];
+const MAX_SLIDER_H = 40; // slider max in hours
 
 function LernfortschrittWidget({
   sessions,
@@ -108,66 +109,77 @@ function LernfortschrittWidget({
 
   const weekSessions = sessions.filter((s) => {
     if (!s.date) return false;
-    try {
-      return isWithinInterval(parseISO(s.date), { start: weekStart, end: weekEnd });
-    } catch {
-      return false;
-    }
+    try { return isWithinInterval(parseISO(s.date), { start: weekStart, end: weekEnd }); }
+    catch { return false; }
   });
 
-  const geplantTotal = weekSessions.reduce((acc, s) => acc + (s.duration ?? 0), 0);
-
+  const autoGeplant = weekSessions.reduce((acc, s) => acc + (s.duration ?? 0), 0);
   const weekPomodoros = pomodoros.filter((p) => {
-    try {
-      return isWithinInterval(parseISO(p.start), { start: weekStart, end: weekEnd });
-    } catch {
-      return false;
-    }
+    try { return isWithinInterval(parseISO(p.start), { start: weekStart, end: weekEnd }); }
+    catch { return false; }
   });
-  const absolviertTotal = weekPomodoros.reduce((acc, p) => acc + p.dauerMin, 0) / 60;
+  const autoAbsolviert = weekPomodoros.reduce((acc, p) => acc + p.dauerMin, 0) / 60;
 
-  // Per-fach breakdown
-  const fachStunden = FACH_LIST.map((fach) => {
-    const h = weekSessions
-      .filter((s) => s.subject === fach)
-      .reduce((acc, s) => acc + (s.duration ?? 0), 0);
-    return { fach, h };
-  }).filter((f) => f.h > 0);
+  // Manual overrides via sliders
+  const [manualGeplant, setManualGeplant] = useState<number | null>(null);
+  const [manualAbsolviert, setManualAbsolviert] = useState<number | null>(null);
+
+  const geplant = manualGeplant ?? autoGeplant;
+  const absolviert = manualAbsolviert ?? autoAbsolviert;
+  const pct = geplant > 0 ? Math.min(100, Math.round((absolviert / geplant) * 100)) : 0;
+
+  const fachStunden = FACH_LIST.map((fach) => ({
+    fach,
+    h: weekSessions.filter((s) => s.subject === fach).reduce((acc, s) => acc + (s.duration ?? 0), 0),
+  })).filter((f) => f.h > 0);
 
   return (
-    <WidgetCard
-      title="Lernfortschritt KW"
-      open={open}
-      onToggle={() => setOpen(!open)}
-    >
+    <WidgetCard title="Lernfortschritt KW" open={open} onToggle={() => setOpen(!open)}>
       <div className="space-y-3">
+        {/* Stat row */}
         <div className="flex justify-between items-baseline">
           <div>
-            <p className="text-xs text-muted-foreground">Absolviert</p>
-            <p className="text-lg font-bold text-foreground">{formatDuration(absolviertTotal)}</p>
+            <p className="text-[10px] text-muted-foreground">Absolviert</p>
+            <p className="text-lg font-bold text-foreground">{formatDuration(absolviert)}</p>
           </div>
           <div className="text-right">
-            <p className="text-xs text-muted-foreground">Geplant</p>
-            <p className="text-sm font-semibold text-foreground">{formatDuration(geplantTotal)}</p>
+            <p className="text-[10px] text-muted-foreground">Lernziel</p>
+            <p className="text-sm font-semibold text-foreground">{formatDuration(geplant)}</p>
+          </div>
+          <div className="text-right">
+            <p className="text-[10px] text-muted-foreground">Fortschritt</p>
+            <p className={cn("text-sm font-bold", pct >= 100 ? "text-green-600" : pct >= 60 ? "text-primary" : "text-amber-500")}>
+              {pct}%
+            </p>
           </div>
         </div>
 
-        <div className="space-y-1">
-          <Progress
-            value={absolviertTotal}
-            max={Math.max(geplantTotal, 0.1)}
-            className="h-2"
-            color="bg-primary"
+        {/* Progress bar */}
+        <Progress value={absolviert} max={Math.max(geplant, 0.1)} className="h-2" color="bg-primary" />
+
+        {/* Sliders */}
+        <div className="space-y-2 pt-1 border-t border-border">
+          <SliderRow
+            label="Lernziel"
+            value={geplant}
+            max={MAX_SLIDER_H}
+            color="#6346dc"
+            onChange={(v) => setManualGeplant(v)}
+            onReset={autoGeplant !== manualGeplant ? () => setManualGeplant(null) : undefined}
           />
-          <p className="text-[10px] text-muted-foreground text-right">
-            {geplantTotal > 0
-              ? `${Math.round((absolviertTotal / geplantTotal) * 100)}%`
-              : "0%"}
-          </p>
+          <SliderRow
+            label="Absolviert"
+            value={absolviert}
+            max={MAX_SLIDER_H}
+            color="#10b981"
+            onChange={(v) => setManualAbsolviert(v)}
+            onReset={autoAbsolviert !== manualAbsolviert ? () => setManualAbsolviert(null) : undefined}
+          />
         </div>
 
+        {/* Per-fach breakdown */}
         {fachStunden.length > 0 && (
-          <div className="space-y-1">
+          <div className="space-y-1 pt-1 border-t border-border">
             {fachStunden.map(({ fach, h }) => {
               const colors = getFachColors(fach);
               return (
@@ -182,6 +194,45 @@ function LernfortschrittWidget({
         )}
       </div>
     </WidgetCard>
+  );
+}
+
+function SliderRow({
+  label, value, max, color, onChange, onReset,
+}: {
+  label: string;
+  value: number;
+  max: number;
+  color: string;
+  onChange: (v: number) => void;
+  onReset?: () => void;
+}) {
+  return (
+    <div className="flex items-center gap-2">
+      <span className="text-[10px] text-muted-foreground w-16 shrink-0">{label}</span>
+      <input
+        type="range"
+        min={0}
+        max={max}
+        step={0.5}
+        value={value}
+        onChange={(e) => onChange(parseFloat(e.target.value))}
+        className="flex-1 h-1.5 rounded-full appearance-none cursor-pointer"
+        style={{ accentColor: color }}
+      />
+      <span className="text-[10px] font-medium text-foreground w-8 text-right shrink-0">
+        {value % 1 === 0 ? `${value}h` : `${value}h`}
+      </span>
+      {onReset && (
+        <button
+          onClick={onReset}
+          title="Zurücksetzen"
+          className="text-[9px] text-muted-foreground hover:text-foreground transition-colors shrink-0"
+        >
+          ↺
+        </button>
+      )}
+    </div>
   );
 }
 

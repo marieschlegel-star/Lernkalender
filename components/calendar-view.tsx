@@ -139,6 +139,15 @@ export function CalendarViewComponent({
           if (sid) onSessionDrop(sid, info.event.start!.toISOString());
           else info.revert();
         }}
+        eventReceive={(info) => {
+          // Fired when an external chip is dropped onto the calendar
+          const { type, sessionId } = info.event.extendedProps ?? {};
+          if (type === "session" && sessionId) {
+            onSessionDrop(sessionId, info.event.start!.toISOString());
+          }
+          // Remove from FC's internal store — our controlled events list handles rendering
+          info.event.remove();
+        }}
         eventClick={(info) => {
           const sid = info.event.extendedProps.sessionId;
           if (sid) onEventClick(sid);
