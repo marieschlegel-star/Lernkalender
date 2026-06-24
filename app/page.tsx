@@ -11,6 +11,7 @@ import { RightSidebar } from "@/components/right-sidebar";
 import { CalendarViewComponent } from "@/components/calendar-view";
 import { Topbar } from "@/components/topbar";
 import { SessionPanel } from "@/components/session-panel";
+import { QuickCreateModal } from "@/components/quick-create-modal";
 import { useAppStore } from "@/lib/store";
 import {
   DUMMY_SESSIONS,
@@ -28,6 +29,7 @@ export default function HomePage() {
   const qc = useQueryClient();
   const { selectedSessionId, setSelectedSessionId, calendarView } = useAppStore();
   const [calTitle, setCalTitle] = useState("KW 26 · Juni 2026");
+  const [quickCreate, setQuickCreate] = useState<{ date: Date; allDay: boolean } | null>(null);
 
   // ─── Data ─────────────────────────────────────────────────────────
   const { data: sessions = DUMMY_SESSIONS } = useQuery<LernSession[]>({
@@ -127,6 +129,10 @@ export default function HomePage() {
     []
   );
 
+  const handleDateClick = useCallback((date: Date, allDay: boolean) => {
+    setQuickCreate({ date, allDay });
+  }, []);
+
   const selectedSession = sessions.find((s) => s.id === selectedSessionId) ?? null;
 
   return (
@@ -148,6 +154,7 @@ export default function HomePage() {
             onSessionDrop={handleSessionDrop}
             onEventClick={(id) => setSelectedSessionId(id)}
             onDatesSet={handleDatesSet}
+            onDateClick={handleDateClick}
           />
         </div>
       </main>
@@ -171,6 +178,19 @@ export default function HomePage() {
           />
         )}
       </div>
+
+      {/* Quick-Create Modal */}
+      {quickCreate && (
+        <QuickCreateModal
+          date={quickCreate.date}
+          allDay={quickCreate.allDay}
+          onClose={() => setQuickCreate(null)}
+          onCreated={() => {
+            qc.invalidateQueries({ queryKey: ["sessions"] });
+            qc.invalidateQueries({ queryKey: ["todos"] });
+          }}
+        />
+      )}
     </div>
   );
 }

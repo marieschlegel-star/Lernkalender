@@ -37,6 +37,21 @@ export async function notionQuery(databaseId: string, body: object = {}): Promis
   return results;
 }
 
+export async function notionCreatePage(databaseId: string, properties: object): Promise<any> {
+  const res = await fetch(`${BASE}/pages`, {
+    method: "POST",
+    headers: headers(),
+    body: JSON.stringify({ parent: { database_id: databaseId }, properties }),
+  });
+
+  if (!res.ok) {
+    const err = await res.text();
+    throw new Error(`Notion API ${res.status}: ${err}`);
+  }
+
+  return res.json();
+}
+
 export async function notionUpdatePage(pageId: string, properties: object): Promise<void> {
   const res = await fetch(`${BASE}/pages/${pageId}`, {
     method: "PATCH",

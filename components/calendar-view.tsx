@@ -22,6 +22,7 @@ interface CalendarViewProps {
   onSessionDrop: (sessionId: string, newDate: string) => void;
   onEventClick: (sessionId: string) => void;
   onDatesSet?: (info: any) => void;
+  onDateClick?: (date: Date, allDay: boolean) => void;
 }
 
 export function CalendarViewComponent({
@@ -34,6 +35,7 @@ export function CalendarViewComponent({
   onSessionDrop,
   onEventClick,
   onDatesSet,
+  onDateClick,
 }: CalendarViewProps) {
   const { visibility } = useAppStore();
 
@@ -156,6 +158,7 @@ export function CalendarViewComponent({
           const sid = info.event.extendedProps.sessionId;
           if (sid) onEventClick(sid);
         }}
+        dateClick={(info) => onDateClick?.(info.date, info.allDay)}
         eventContent={(arg) => <EventContent arg={arg} />}
       />
     </div>

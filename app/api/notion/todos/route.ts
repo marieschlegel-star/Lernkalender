@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { notionQuery, notionUpdatePage } from "@/lib/notion-fetch";
+import { notionQuery, notionUpdatePage, notionCreatePage } from "@/lib/notion-fetch";
 import type { Todo, TodoKategorie } from "@/lib/types";
 
 export async function GET() {
@@ -25,6 +25,25 @@ export async function GET() {
     return NextResponse.json(todos);
   } catch (error: any) {
     console.error("[todos]", error.message);
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+}
+
+export async function POST(req: Request) {
+  try {
+    const { name, date, kategorie } = await req.json();
+    const dbId = process.env.NOTION_TODO_DB_ID;
+    if (!dbId) return NextResponse.json({ error: "DB ID missing" }, { status: 500 });
+
+    const page = await notionCreatePage(dbId, {
+      Name: { title: [{ text: { content: name || "Neues To-Do" } }] },
+      ...(date ? { Dat: { date: { start: date } } } : {}),
+      ...(kategorie ? { Auswählen: { select: { name: kategorie } } } : {}),
+    });
+
+    return NextResponse.json({ id: page.id });
+  } catch (error: any) {
+    console.error("[todos POST]", error.message);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }

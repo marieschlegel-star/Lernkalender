@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { notionQuery, notionUpdatePage } from "@/lib/notion-fetch";
+import { notionQuery, notionUpdatePage, notionCreatePage } from "@/lib/notion-fetch";
 import type { LernSession, Fach, LernStatus, Priority } from "@/lib/types";
 
 export async function GET() {
@@ -35,6 +35,26 @@ export async function GET() {
     return NextResponse.json(sessions);
   } catch (error: any) {
     console.error("[sessions]", error.message);
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+}
+
+export async function POST(req: Request) {
+  try {
+    const { title, date, subject, duration } = await req.json();
+    const dbId = process.env.NOTION_LERNPLAN_DB_ID;
+    if (!dbId) return NextResponse.json({ error: "DB ID missing" }, { status: 500 });
+
+    const page = await notionCreatePage(dbId, {
+      Session: { title: [{ text: { content: title || "Neue Lerneinheit" } }] },
+      ...(date ? { Date: { date: { start: date } } } : {}),
+      ...(subject ? { Subject: { select: { name: subject } } } : {}),
+      ...(duration != null ? { Duration: { number: duration } } : {}),
+    });
+
+    return NextResponse.json({ id: page.id });
+  } catch (error: any) {
+    console.error("[sessions POST]", error.message);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
