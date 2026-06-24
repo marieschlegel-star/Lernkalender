@@ -55,15 +55,13 @@ export function LeftSidebar({ sessions, todos }: LeftSidebarProps) {
   const activeFaecher = filters.faecher;
   const activeKategorien = filters.todoKategorien;
 
-  const filteredSessions = sessions.filter(
-    (s) => !s.completed && (activeFaecher.length === 0 || activeFaecher.includes(s.subject))
-  );
+  const filteredSessions = activeFaecher.length === 0
+    ? []
+    : sessions.filter((s) => !s.completed && activeFaecher.includes(s.subject));
 
-  const filteredTodos = todos.filter(
-    (t) =>
-      !t.completed &&
-      (activeKategorien.length === 0 || (t.kategorie && activeKategorien.includes(t.kategorie)))
-  );
+  const filteredTodos = activeKategorien.length === 0
+    ? []
+    : todos.filter((t) => !t.completed && t.kategorie != null && activeKategorien.includes(t.kategorie));
 
   return (
     <aside className="w-[172px] flex flex-col border-r border-border bg-white overflow-hidden">
