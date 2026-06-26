@@ -30,7 +30,6 @@ interface CalendarViewProps {
   onDatesSet?: (info: any) => void;
   onDateClick?: (date: Date, allDay: boolean) => void;
   onDayHeaderClick?: (date: Date) => void;
-  onThemeDrop?: (subject: string, thema: string, date: Date) => void;
 }
 
 export function CalendarViewComponent({
@@ -46,7 +45,6 @@ export function CalendarViewComponent({
   onDatesSet,
   onDateClick,
   onDayHeaderClick,
-  onThemeDrop,
 }: CalendarViewProps) {
   const { visibility } = useAppStore();
   const { dayTypes } = useDayStore();
@@ -204,11 +202,9 @@ export function CalendarViewComponent({
           onSessionResize(sid, durationHoursFromRange(info.event.start, info.event.end, 5));
         }}
         eventReceive={(info: EventReceiveArg) => {
-          const { type, sessionId, subject, thema } = info.event.extendedProps ?? {};
+          const { type, sessionId } = info.event.extendedProps ?? {};
           if (type === "session" && sessionId) {
             onSessionDrop(sessionId, info.event.start!.toISOString());
-          } else if (type === "new-theme" && info.event.start) {
-            onThemeDrop?.(subject, thema, info.event.start);
           }
           info.event.remove();
         }}

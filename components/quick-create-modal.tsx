@@ -28,17 +28,10 @@ export type QuickCreatePayload =
       kategorie: TodoKategorie;
     };
 
-export interface QuickCreatePrefill {
-  type?: CreateType;
-  subject?: Fach;
-  title?: string;
-}
-
 interface QuickCreateModalProps {
   date: Date;
   allDay: boolean;
   calendarView?: string;
-  prefill?: QuickCreatePrefill;
   onClose: () => void;
   onCreate: (payload: QuickCreatePayload) => Promise<{ ok: boolean; error?: string }>;
 }
@@ -61,10 +54,10 @@ function applyTime(base: Date, time: string): Date {
   return next;
 }
 
-export function QuickCreateModal({ date, allDay, calendarView, prefill, onClose, onCreate }: QuickCreateModalProps) {
-  const [type, setType] = useState<CreateType>(() => prefill?.type ?? suggestedType(allDay, calendarView));
-  const [title, setTitle] = useState(prefill?.title ?? "");
-  const [fach, setFach] = useState<Fach>(prefill?.subject ?? "ZPO");
+export function QuickCreateModal({ date, allDay, calendarView, onClose, onCreate }: QuickCreateModalProps) {
+  const [type, setType] = useState<CreateType>(() => suggestedType(allDay, calendarView));
+  const [title, setTitle] = useState("");
+  const [fach, setFach] = useState<Fach>("ZPO");
   const [duration, setDuration] = useState(1);
   const [kategorie, setKategorie] = useState<TodoKategorie>("Lernen");
   const [time, setTime] = useState(format(date, "HH:mm"));

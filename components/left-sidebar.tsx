@@ -4,7 +4,6 @@ import { useEffect, useRef, useState } from "react";
 import { Draggable } from "@fullcalendar/interaction";
 import { useAppStore } from "@/lib/store";
 import { getFachColors, cn } from "@/lib/utils";
-import { RECHTSGEBIETE } from "@/lib/rechtsgebiete";
 import type { Fach, TodoKategorie, LernSession, Todo } from "@/lib/types";
 import { GripVertical, ChevronDown, ChevronRight } from "lucide-react";
 
@@ -40,13 +39,8 @@ export function LeftSidebar({ sessions, todos }: LeftSidebarProps) {
     toggleTodoKategorie,
   } = useAppStore();
 
-  // Container ref for FullCalendar Draggable — covers ALL draggable chips
   const chipsRef = useRef<HTMLDivElement>(null);
 
-  // Which Rechtsgebiete groups are expanded
-  const [expanded, setExpanded] = useState<Record<string, boolean>>({ ZivR: true });
-
-  // Section collapse state
   const [showFilter, setShowFilter] = useState(false);
   const [showSessions, setShowSessions] = useState(true);
   const [showTodos, setShowTodos] = useState(false);
@@ -88,73 +82,8 @@ export function LeftSidebar({ sessions, todos }: LeftSidebarProps) {
       {/* ── Scrollable content ──────────────────────────────────────── */}
       <div className="flex-1 overflow-y-auto" ref={chipsRef}>
 
-        {/* ── THEMENLEISTE ──────────────────────────────────────────── */}
-        <div className="p-2 pb-1">
-          <p className="text-[9px] font-semibold text-muted-foreground uppercase tracking-wider px-1 mb-1.5">
-            Themenleiste — in Kalender ziehen
-          </p>
-          <div className="space-y-0.5">
-            {RECHTSGEBIETE.map((gruppe) => {
-              const colors = getFachColors(gruppe.fach);
-              const open = !!expanded[gruppe.fach];
-              return (
-                <div key={gruppe.fach}>
-                  {/* Group header */}
-                  <button
-                    onClick={() => setExpanded((p) => ({ ...p, [gruppe.fach]: !open }))}
-                    className="w-full flex items-center gap-1.5 px-1.5 py-1 rounded-md hover:bg-slate-50 transition-colors group"
-                  >
-                    <span className="text-[11px]">{gruppe.emoji}</span>
-                    <span className="flex-1 text-[10px] font-semibold text-left leading-none truncate" style={{ color: colors.text }}>
-                      {gruppe.label}
-                    </span>
-                    {open
-                      ? <ChevronDown className="h-2.5 w-2.5 text-muted-foreground shrink-0" />
-                      : <ChevronRight className="h-2.5 w-2.5 text-muted-foreground shrink-0" />
-                    }
-                  </button>
-
-                  {/* Themen chips */}
-                  {open && (
-                    <div className="pl-3 pr-1 pb-1 space-y-0.5">
-                      {gruppe.themen.map((thema) => {
-                        const eventData = JSON.stringify({
-                          title: thema,
-                          duration: "01:00:00",
-                          backgroundColor: colors.bg,
-                          borderColor: colors.border,
-                          textColor: colors.text,
-                          extendedProps: {
-                            type: "new-theme",
-                            subject: gruppe.fach,
-                            thema,
-                          },
-                        });
-                        return (
-                          <div
-                            key={thema}
-                            className="fc-draggable-chip flex items-center gap-1 rounded-md px-1.5 py-1 cursor-grab active:cursor-grabbing hover:opacity-90 transition-opacity select-none border border-transparent hover:border-slate-200"
-                            style={{ background: colors.bg + "99" }}
-                            data-event={eventData}
-                          >
-                            <GripVertical className="h-2.5 w-2.5 shrink-0 opacity-40" style={{ color: colors.text }} />
-                            <span className="text-[10px] font-medium truncate leading-tight" style={{ color: colors.text }}>
-                              {thema}
-                            </span>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        </div>
-
         {/* ── KALENDER / FILTER ─────────────────────────────────────── */}
-        <div className="border-t border-border mx-2 my-1" />
-        <div className="px-2 pb-1">
+        <div className="px-2 pt-2 pb-1">
           <button
             className="w-full flex items-center justify-between px-1 py-1 text-[9px] font-semibold text-muted-foreground uppercase tracking-wider hover:text-foreground transition-colors"
             onClick={() => setShowFilter((v) => !v)}

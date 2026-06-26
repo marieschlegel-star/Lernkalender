@@ -11,7 +11,7 @@ import { RightSidebar } from "@/components/right-sidebar";
 import { CalendarViewComponent } from "@/components/calendar-view";
 import { Topbar } from "@/components/topbar";
 import { SessionPanel } from "@/components/session-panel";
-import { QuickCreateModal, type QuickCreatePayload, type QuickCreatePrefill } from "@/components/quick-create-modal";
+import { QuickCreateModal, type QuickCreatePayload } from "@/components/quick-create-modal";
 import { DayTypePicker } from "@/components/day-type-picker";
 import { useAppStore } from "@/lib/store";
 import { toLocalISO, toDateOnly } from "@/lib/utils";
@@ -31,7 +31,7 @@ export default function HomePage() {
   const qc = useQueryClient();
   const { selectedSessionId, setSelectedSessionId, calendarView, filters, toggleFach, toggleTodoKategorie } = useAppStore();
   const [calTitle, setCalTitle] = useState("KW 26 · Juni 2026");
-  const [quickCreate, setQuickCreate] = useState<{ date: Date; allDay: boolean; prefill?: QuickCreatePrefill } | null>(null);
+  const [quickCreate, setQuickCreate] = useState<{ date: Date; allDay: boolean } | null>(null);
   const [pickerDate, setPickerDate] = useState<Date | null>(null);
 
   // ─── Data ─────────────────────────────────────────────────────────
@@ -190,14 +190,6 @@ export default function HomePage() {
     setQuickCreate({ date, allDay });
   }, []);
 
-  const handleThemeDrop = useCallback((subject: string, thema: string, date: Date) => {
-    setQuickCreate({
-      date,
-      allDay: false,
-      prefill: { type: "lerneinheit", subject: subject as any, title: thema },
-    });
-  }, []);
-
   const handleDayHeaderClick = useCallback((date: Date) => {
     setPickerDate(date);
   }, []);
@@ -343,7 +335,6 @@ export default function HomePage() {
             onDatesSet={handleDatesSet}
             onDateClick={handleDateClick}
             onDayHeaderClick={handleDayHeaderClick}
-            onThemeDrop={handleThemeDrop}
           />
         </div>
       </main>
@@ -383,7 +374,6 @@ export default function HomePage() {
           date={quickCreate.date}
           allDay={quickCreate.allDay}
           calendarView={calendarView}
-          prefill={quickCreate.prefill}
           onClose={() => setQuickCreate(null)}
           onCreate={handleQuickCreate}
         />
