@@ -12,6 +12,7 @@ const VIEW_LABELS: Record<CalendarView, string> = {
   timeGridDay: "Tag",
   timeGridWeek: "Woche",
   dayGridMonth: "Monat",
+  listWeek: "Agenda",
 };
 
 interface TopbarProps {

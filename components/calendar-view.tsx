@@ -4,13 +4,18 @@ import { useCallback } from "react";
 import FullCalendar from "@fullcalendar/react";
 import dayGridPlugin from "@fullcalendar/daygrid";
 import timeGridPlugin from "@fullcalendar/timegrid";
+import listPlugin from "@fullcalendar/list";
 import interactionPlugin from "@fullcalendar/interaction";
-import type { EventInput, EventDropArg } from "@fullcalendar/core";
+import type { EventInput, EventReceiveArg, EventResizeDoneArg } from "@fullcalendar/core";
+import { durationHoursFromRange } from "@/lib/utils";
 import deLocale from "@fullcalendar/core/locales/de";
 import { useAppStore } from "@/lib/store";
+import { useDayStore } from "@/lib/day-store";
 import { getFachColors } from "@/lib/utils";
 import type { LernSession, Klausur, Todo, GCalEvent } from "@/lib/types";
+import { TAGESTYP_CONFIG } from "@/lib/types";
 import { format } from "date-fns";
+import { de } from "date-fns/locale";
 
 interface CalendarViewProps {
   calRef: React.RefObject<FullCalendar>;
@@ -20,9 +25,11 @@ interface CalendarViewProps {
   gcalEvents: GCalEvent[];
   view: string;
   onSessionDrop: (sessionId: string, newDate: string) => void;
+  onSessionResize: (sessionId: string, duration: number) => void;
   onEventClick: (sessionId: string) => void;
   onDatesSet?: (info: any) => void;
   onDateClick?: (date: Date, allDay: boolean) => void;
+  onDayHeaderClick?: (date: Date) => void;
 }
 
 export function CalendarViewComponent({
@@ -33,14 +40,30 @@ export function CalendarViewComponent({
   gcalEvents,
   view,
   onSessionDrop,
+  onSessionResize,
   onEventClick,
   onDatesSet,
   onDateClick,
+  onDayHeaderClick,
 }: CalendarViewProps) {
   const { visibility } = useAppStore();
+  const { dayTypes } = useDayStore();
 
   const buildEvents = useCallback((): EventInput[] => {
     const events: EventInput[] = [];
+
+    // Background events for day types
+    Object.entries(dayTypes).forEach(([dateStr, typ]) => {
+      const cfg = TAGESTYP_CONFIG[typ];
+      events.push({
+        id: `daytype-${dateStr}`,
+        start: dateStr,
+        allDay: true,
+        display: "background",
+        backgroundColor: cfg.bg,
+        extendedProps: { type: "daytype", dayTyp: typ },
+      });
+    });
 
     if (visibility.lernplan) {
       sessions
@@ -58,6 +81,8 @@ export function CalendarViewComponent({
             borderColor: colors.border,
             textColor: colors.text,
             extendedProps: { type: "session", sessionId: s.id, fach: s.subject },
+            startEditable: false,
+            durationEditable: true,
           });
         });
     }
@@ -114,18 +139,19 @@ export function CalendarViewComponent({
     });
 
     return events;
-  }, [sessions, klausuren, todos, gcalEvents, visibility]);
+  }, [sessions, klausuren, todos, gcalEvents, visibility, dayTypes]);
 
   return (
     <div className="h-full overflow-hidden px-2 pt-1">
       <FullCalendar
         ref={calRef}
-        plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
+        plugins={[dayGridPlugin, timeGridPlugin, listPlugin, interactionPlugin]}
         initialView={view}
         locale={deLocale}
         headerToolbar={false}
         events={buildEvents()}
         editable={true}
+        eventStartEditable={false}
         droppable={true}
         eventResizableFromStart={false}
         eventDurationEditable={true}
@@ -140,18 +166,46 @@ export function CalendarViewComponent({
         allDaySlot={true}
         firstDay={1}
         datesSet={onDatesSet}
-        eventDrop={(info: EventDropArg) => {
-          const sid = info.event.extendedProps.sessionId;
-          if (sid) onSessionDrop(sid, info.event.start!.toISOString());
-          else info.revert();
+        dayHeaderContent={(arg) => {
+          const dateStr = format(arg.date, "yyyy-MM-dd");
+          const typ = dayTypes[dateStr];
+          const cfg = typ ? TAGESTYP_CONFIG[typ] : null;
+          const isToday = format(new Date(), "yyyy-MM-dd") === dateStr;
+
+          return (
+            <div
+              className="flex flex-col items-center gap-0.5 py-1 cursor-pointer group w-full"
+              onClick={() => onDayHeaderClick?.(arg.date)}
+              title="Tagestyp setzen"
+            >
+              <span className={`text-[11px] font-semibold transition-colors group-hover:text-primary ${isToday ? "text-primary" : "text-foreground/80"}`}>
+                {format(arg.date, "EEE d.", { locale: de })}
+              </span>
+              {cfg ? (
+                <span className="text-[9px] font-medium" style={{ color: cfg.color }}>
+                  {cfg.emoji} {cfg.label}
+                </span>
+              ) : (
+                <span className="text-[9px] text-transparent group-hover:text-muted-foreground transition-colors">
+                  + Typ
+                </span>
+              )}
+            </div>
+          );
         }}
-        eventReceive={(info) => {
-          // Fired when an external chip is dropped onto the calendar
+        eventResize={(info: EventResizeDoneArg) => {
+          const sid = info.event.extendedProps.sessionId as string | undefined;
+          if (!sid || !info.event.start || !info.event.end) {
+            info.revert();
+            return;
+          }
+          onSessionResize(sid, durationHoursFromRange(info.event.start, info.event.end, 5));
+        }}
+        eventReceive={(info: EventReceiveArg) => {
           const { type, sessionId } = info.event.extendedProps ?? {};
           if (type === "session" && sessionId) {
             onSessionDrop(sessionId, info.event.start!.toISOString());
           }
-          // Remove from FC's internal store — our controlled events list handles rendering
           info.event.remove();
         }}
         eventClick={(info) => {
@@ -168,6 +222,20 @@ export function CalendarViewComponent({
 function EventContent({ arg }: { arg: any }) {
   const { event, view } = arg;
   const isMonth = view.type === "dayGridMonth";
+  const isAgenda = view.type === "listWeek";
+
+  if (isAgenda) {
+    return (
+      <div className="px-1 py-0.5">
+        <span className="text-sm font-medium">{event.title}</span>
+        {event.start && event.end && !event.allDay && (
+          <span className="text-xs text-muted-foreground ml-2">
+            {format(event.start, "HH:mm")}–{format(event.end, "HH:mm")}
+          </span>
+        )}
+      </div>
+    );
+  }
 
   return (
     <div className="overflow-hidden px-1 py-0.5 w-full truncate">

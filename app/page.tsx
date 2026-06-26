@@ -12,6 +12,7 @@ import { CalendarViewComponent } from "@/components/calendar-view";
 import { Topbar } from "@/components/topbar";
 import { SessionPanel } from "@/components/session-panel";
 import { QuickCreateModal, type QuickCreatePayload } from "@/components/quick-create-modal";
+import { DayTypePicker } from "@/components/day-type-picker";
 import { useAppStore } from "@/lib/store";
 import { toLocalISO, toDateOnly } from "@/lib/utils";
 import {
@@ -31,6 +32,7 @@ export default function HomePage() {
   const { selectedSessionId, setSelectedSessionId, calendarView, filters, toggleFach, toggleTodoKategorie } = useAppStore();
   const [calTitle, setCalTitle] = useState("KW 26 · Juni 2026");
   const [quickCreate, setQuickCreate] = useState<{ date: Date; allDay: boolean } | null>(null);
+  const [pickerDate, setPickerDate] = useState<Date | null>(null);
 
   // ─── Data ─────────────────────────────────────────────────────────
   const { data: sessions = DUMMY_SESSIONS } = useQuery<LernSession[]>({
@@ -88,6 +90,28 @@ export default function HomePage() {
     },
   });
 
+  const updateSessionDuration = useMutation({
+    mutationFn: async ({ id, duration }: { id: string; duration: number }) => {
+      if (!USE_NOTION) return;
+      await fetch("/api/notion/sessions", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id, duration }),
+      });
+    },
+    onMutate: async ({ id, duration }) => {
+      await qc.cancelQueries({ queryKey: ["sessions"] });
+      const prev = qc.getQueryData<LernSession[]>(["sessions"]);
+      qc.setQueryData<LernSession[]>(["sessions"], (old) =>
+        old?.map((s) => (s.id === id ? { ...s, duration } : s)) ?? []
+      );
+      return { prev };
+    },
+    onError: (_e, _v, ctx) => {
+      if (ctx?.prev) qc.setQueryData(["sessions"], ctx.prev);
+    },
+  });
+
   const completeTodo = useMutation({
     mutationFn: async ({ id, completed }: { id: string; completed: boolean }) => {
       if (!USE_NOTION) return;
@@ -111,6 +135,13 @@ export default function HomePage() {
   });
 
   // ─── Handlers ─────────────────────────────────────────────────────
+  const handleSessionResize = useCallback(
+    (sessionId: string, duration: number) => {
+      updateSessionDuration.mutate({ id: sessionId, duration });
+    },
+    [updateSessionDuration]
+  );
+
   const handleSessionDrop = useCallback(
     (sessionId: string, newDate: string) => {
       updateSessionDate.mutate({ id: sessionId, date: newDate });
@@ -135,6 +166,10 @@ export default function HomePage() {
 
   const handleDateClick = useCallback((date: Date, allDay: boolean) => {
     setQuickCreate({ date, allDay });
+  }, []);
+
+  const handleDayHeaderClick = useCallback((date: Date) => {
+    setPickerDate(date);
   }, []);
 
   const handleQuickCreate = useCallback(
@@ -273,9 +308,11 @@ export default function HomePage() {
             gcalEvents={gcalEvents}
             view={calendarView}
             onSessionDrop={handleSessionDrop}
+            onSessionResize={handleSessionResize}
             onEventClick={(id) => setSelectedSessionId(id)}
             onDatesSet={handleDatesSet}
             onDateClick={handleDateClick}
+            onDayHeaderClick={handleDayHeaderClick}
           />
         </div>
       </main>
@@ -299,6 +336,11 @@ export default function HomePage() {
           />
         )}
       </div>
+
+      {/* Day Type Picker */}
+      {pickerDate && (
+        <DayTypePicker date={pickerDate} onClose={() => setPickerDate(null)} />
+      )}
 
       {/* Quick-Create Modal */}
       {quickCreate && (

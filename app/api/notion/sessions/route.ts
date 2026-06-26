@@ -61,12 +61,21 @@ export async function POST(req: Request) {
 
 export async function PATCH(req: Request) {
   try {
-    const { id, date } = await req.json();
+    const { id, date, duration } = await req.json();
     if (!id) return NextResponse.json({ error: "ID required" }, { status: 400 });
 
-    await notionUpdatePage(id, {
-      Date: date ? { date: { start: date } } : { date: null },
-    });
+    const props: Record<string, unknown> = {};
+    if (date !== undefined) {
+      props.Date = date ? { date: { start: date } } : { date: null };
+    }
+    if (duration !== undefined) {
+      props.Duration = { number: duration };
+    }
+    if (Object.keys(props).length === 0) {
+      return NextResponse.json({ error: "Nothing to update" }, { status: 400 });
+    }
+
+    await notionUpdatePage(id, props);
 
     return NextResponse.json({ success: true });
   } catch (error: any) {

@@ -116,8 +116,34 @@ export interface GCalCalendar {
   color: string;
 }
 
+// ─── Tagestypen ────────────────────────────────────────────────────
+export type DayTyp =
+  | "lerntag"
+  | "halb"
+  | "ag"
+  | "urlaub"
+  | "krank"
+  | "privat"
+  | "klausur";
+
+export const TAGESTYP_CONFIG: Record<DayTyp, {
+  label: string;
+  emoji: string;
+  factor: number;
+  bg: string;
+  color: string;
+}> = {
+  lerntag:  { label: "Lerntag",        emoji: "📚", factor: 1.0, bg: "rgba(219,234,254,0.35)", color: "#1E40AF" },
+  halb:     { label: "Halber Lerntag", emoji: "📖", factor: 0.5, bg: "rgba(254,243,199,0.45)", color: "#92400E" },
+  ag:       { label: "AG",             emoji: "💼", factor: 0.5, bg: "rgba(209,250,229,0.45)", color: "#065F46" },
+  urlaub:   { label: "Urlaub",         emoji: "🏖",  factor: 0.0, bg: "rgba(254,215,170,0.45)", color: "#C2410C" },
+  krank:    { label: "Krank",          emoji: "🤒", factor: 0.0, bg: "rgba(254,202,202,0.45)", color: "#B91C1C" },
+  privat:   { label: "Privat",         emoji: "🏡", factor: 0.0, bg: "rgba(237,233,254,0.45)", color: "#7C3AED" },
+  klausur:  { label: "Examensklausur", emoji: "⚖️", factor: 1.0, bg: "rgba(254,240,138,0.55)", color: "#854D0E" },
+};
+
 // ─── UI State ──────────────────────────────────────────────────────
-export type CalendarView = "timeGridDay" | "timeGridWeek" | "dayGridMonth";
+export type CalendarView = "timeGridDay" | "timeGridWeek" | "dayGridMonth" | "listWeek";
 
 export interface CalendarVisibility {
   lernplan: boolean;

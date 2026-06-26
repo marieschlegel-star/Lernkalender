@@ -84,8 +84,17 @@
   border: none;
   font-size: 0.72rem;
   padding: 2px 6px;
-  cursor: pointer;
+  cursor: default;
   font-weight: 500;
+}
+
+.fc .fc-event .fc-event-resizer {
+  cursor: ns-resize;
+}
+
+.fc .fc-timegrid-event .fc-event-resizer-end {
+  height: 8px;
+  bottom: 0;
 }
 
 .fc .fc-event:hover {
