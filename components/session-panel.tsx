@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { X, Brain, HelpCircle, List, CreditCard, PenLine, Calendar, ExternalLink, FileText, Loader2, Trash2 } from "lucide-react";
+import { X, Brain, HelpCircle, List, CreditCard, PenLine, Calendar, ExternalLink, FileText, Loader2, Trash2, Timer } from "lucide-react";
+import { PomodoroTimer } from "./pomodoro-timer";
 import { cn, daysUntil, countdownLabel, getFachColors, formatDuration, priorityDot } from "@/lib/utils";
 import { FachChip } from "./fach-chip";
 import { Button } from "@/components/ui/button";
@@ -47,6 +48,7 @@ export function SessionPanel({ session, klausuren, pomodoros, onClose, onDelete 
   const [loading, setLoading] = useState<AIAction | null>(null);
   const [activeAction, setActiveAction] = useState<AIAction | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [showPomodoro, setShowPomodoro]   = useState(false);
 
   const linkedKlausuren = klausuren.filter((k) => session.klausurenIds.includes(k.id));
   const sessionPomodoros = pomodoros.filter((p) => session.pomodoroIds.includes(p.id));
@@ -101,6 +103,10 @@ export function SessionPanel({ session, klausuren, pomodoros, onClose, onDelete 
     }
   }
 
+  if (showPomodoro) {
+    return <PomodoroTimer session={session} onClose={() => setShowPomodoro(false)} />;
+  }
+
   return (
     <div className="absolute inset-0 z-50 flex flex-col bg-white border-l border-border shadow-panel overflow-hidden">
       {/* Header */}
@@ -127,13 +133,22 @@ export function SessionPanel({ session, klausuren, pomodoros, onClose, onDelete 
               </button>
             </div>
           ) : (
-            <button
-              onClick={() => setConfirmDelete(true)}
-              title="Lerneinheit löschen"
-              className="p-1 rounded hover:bg-red-50 text-muted-foreground hover:text-red-500 transition-colors"
-            >
-              <Trash2 className="h-3.5 w-3.5" />
-            </button>
+            <>
+              <button
+                onClick={() => setShowPomodoro(true)}
+                title="Pomodoro-Timer starten"
+                className="p-1 rounded hover:bg-violet-50 text-muted-foreground hover:text-violet-600 transition-colors"
+              >
+                <Timer className="h-3.5 w-3.5" />
+              </button>
+              <button
+                onClick={() => setConfirmDelete(true)}
+                title="Lerneinheit löschen"
+                className="p-1 rounded hover:bg-red-50 text-muted-foreground hover:text-red-500 transition-colors"
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+              </button>
+            </>
           )}
           <button onClick={onClose} className="p-1 rounded hover:bg-muted transition-colors">
             <X className="h-4 w-4 text-muted-foreground" />
