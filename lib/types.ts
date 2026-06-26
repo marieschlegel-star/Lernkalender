@@ -26,6 +26,33 @@ export const FACH_CALENDAR_COLORS: Record<string, string> = {
 export type LernStatus = "Skript geschrieben" | "Hemmer" | "Ankis" | "AG" | "offen";
 export type Priority = "High" | "Medium" | "Low";
 
+// Einfacher Planungsstatus eines Lernblocks (zusätzlich zu den Lern-Tags)
+export type PlanStatus = "geplant" | "begonnen" | "erledigt";
+
+export const PLAN_STATUS_CONFIG: Record<PlanStatus, { label: string; emoji: string; color: string; bg: string }> = {
+  geplant:  { label: "Geplant",  emoji: "○", color: "#64748B", bg: "#F1F5F9" },
+  begonnen: { label: "Begonnen", emoji: "◐", color: "#B45309", bg: "#FEF3C7" },
+  erledigt: { label: "Erledigt", emoji: "●", color: "#15803D", bg: "#DCFCE7" },
+};
+
+// Lokale Zusatz-Metadaten je Lernblock (Browser-localStorage, nicht in Notion)
+export interface LernblockMeta {
+  unterthema?: string;
+  lernziel?: string;
+  notizen?: string;
+  planStatus?: PlanStatus;
+  farbe?: string; // Hex-Override, sonst Fach-Farbe
+}
+
+// ─── Themenleiste (Rechtsgebiete) ──────────────────────────────────
+export interface RechtsgebietGruppe {
+  id: string;
+  label: string;
+  emoji: string;
+  subject: Fach;        // welches Fach beim Drop gesetzt wird
+  themen: string[];     // selbst gepflegte Unterthemen
+}
+
 export interface LernSession {
   id: string;
   title: string;
@@ -44,6 +71,12 @@ export interface LernSession {
   subIds: string[];
   unterlagen: string[];
   lernTodos: string; // rich text
+  // Lokale Zusatzfelder (aus lernblock-store überlagert, optional)
+  unterthema?: string;
+  lernziel?: string;
+  notizen?: string;
+  planStatus?: PlanStatus;
+  farbe?: string;
 }
 
 // ─── Klausuren ─────────────────────────────────────────────────────

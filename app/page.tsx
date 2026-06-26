@@ -11,8 +11,9 @@ import { RightSidebar } from "@/components/right-sidebar";
 import { CalendarViewComponent } from "@/components/calendar-view";
 import { Topbar } from "@/components/topbar";
 import { SessionPanel } from "@/components/session-panel";
-import { QuickCreateModal, type QuickCreatePayload } from "@/components/quick-create-modal";
+import { QuickCreateModal, type QuickCreatePayload, type QuickCreatePrefill } from "@/components/quick-create-modal";
 import { DayTypePicker } from "@/components/day-type-picker";
+import { DayDetailPanel } from "@/components/day-detail-panel";
 import { useAppStore } from "@/lib/store";
 import { toLocalISO, toDateOnly } from "@/lib/utils";
 import {
@@ -31,8 +32,9 @@ export default function HomePage() {
   const qc = useQueryClient();
   const { selectedSessionId, setSelectedSessionId, calendarView, filters, toggleFach, toggleTodoKategorie } = useAppStore();
   const [calTitle, setCalTitle] = useState("KW 26 · Juni 2026");
-  const [quickCreate, setQuickCreate] = useState<{ date: Date; allDay: boolean } | null>(null);
+  const [quickCreate, setQuickCreate] = useState<{ date: Date; allDay: boolean; prefill?: QuickCreatePrefill } | null>(null);
   const [pickerDate, setPickerDate] = useState<Date | null>(null);
+  const [detailDate, setDetailDate] = useState<Date | null>(null);
 
   // ─── Data ─────────────────────────────────────────────────────────
   const { data: sessions = DUMMY_SESSIONS } = useQuery<LernSession[]>({
@@ -187,7 +189,16 @@ export default function HomePage() {
   );
 
   const handleDateClick = useCallback((date: Date, allDay: boolean) => {
-    setQuickCreate({ date, allDay });
+    // allDay-Klick → Tages-Detailansicht öffnen; Zeitslot-Klick → neuen Lernblock erstellen
+    if (allDay) {
+      setDetailDate(date);
+    } else {
+      setQuickCreate({ date, allDay: false });
+    }
+  }, []);
+
+  const handleThemeDrop = useCallback((subject: string, thema: string, date: Date) => {
+    setQuickCreate({ date, allDay: false, prefill: { type: "lerneinheit", subject: subject as any, title: thema } });
   }, []);
 
   const handleDayHeaderClick = useCallback((date: Date) => {
@@ -335,6 +346,7 @@ export default function HomePage() {
             onDatesSet={handleDatesSet}
             onDateClick={handleDateClick}
             onDayHeaderClick={handleDayHeaderClick}
+            onThemeDrop={handleThemeDrop}
           />
         </div>
       </main>
@@ -351,6 +363,16 @@ export default function HomePage() {
               deleteSession.mutate(id);
               setSelectedSessionId(null);
             }}
+          />
+        ) : detailDate ? (
+          <DayDetailPanel
+            date={detailDate}
+            sessions={sessions}
+            todos={todos}
+            klausuren={klausuren}
+            onClose={() => setDetailDate(null)}
+            onNewLernblock={(date) => { setDetailDate(null); setQuickCreate({ date, allDay: false }); }}
+            onSessionClick={(id) => { setDetailDate(null); setSelectedSessionId(id); }}
           />
         ) : (
           <RightSidebar
@@ -374,6 +396,7 @@ export default function HomePage() {
           date={quickCreate.date}
           allDay={quickCreate.allDay}
           calendarView={calendarView}
+          prefill={quickCreate.prefill}
           onClose={() => setQuickCreate(null)}
           onCreate={handleQuickCreate}
         />

@@ -7,7 +7,9 @@ import { cn, daysUntil, countdownLabel, getFachColors, formatDuration, priorityD
 import { FachChip } from "./fach-chip";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
-import type { LernSession, Klausur, PomodoroSession, AIMessage, AIAction } from "@/lib/types";
+import type { LernSession, Klausur, PomodoroSession, AIMessage, AIAction, PlanStatus } from "@/lib/types";
+import { PLAN_STATUS_CONFIG } from "@/lib/types";
+import { useLernblockStore } from "@/lib/lernblock-store";
 import { format, parseISO } from "date-fns";
 import { de } from "date-fns/locale";
 import { useAppStore } from "@/lib/store";
@@ -44,6 +46,9 @@ const AI_BUTTONS: { action: AIAction; label: string; icon: React.ReactNode; warn
 
 export function SessionPanel({ session, klausuren, pomodoros, onClose, onDelete }: SessionPanelProps) {
   const { aiCallCount, incrementAiCallCount } = useAppStore();
+  const { meta, setMeta } = useLernblockStore();
+  const lbMeta = meta[session.id] ?? {};
+
   const [messages, setMessages] = useState<AIMessage[]>([]);
   const [loading, setLoading] = useState<AIAction | null>(null);
   const [activeAction, setActiveAction] = useState<AIAction | null>(null);
@@ -191,6 +196,78 @@ export function SessionPanel({ session, klausuren, pomodoros, onClose, onDelete 
               <span className="text-[10px] font-medium text-foreground">{progress}%</span>
             </div>
             <Progress value={progress} className="h-1.5" />
+          </div>
+        </div>
+
+        {/* ── Planungsstatus + Zusatzfelder ──────────────────── */}
+        <div className="px-4 py-3 border-b border-border space-y-3">
+          {/* PlanStatus */}
+          <div>
+            <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1.5">
+              Planungsstatus
+            </p>
+            <div className="flex gap-1.5">
+              {(["geplant", "begonnen", "erledigt"] as PlanStatus[]).map((s) => {
+                const cfg = PLAN_STATUS_CONFIG[s];
+                const active = (lbMeta.planStatus ?? "geplant") === s;
+                return (
+                  <button
+                    key={s}
+                    onClick={() => setMeta(session.id, { planStatus: s })}
+                    className={cn(
+                      "flex items-center gap-1 text-[10px] px-2.5 py-1 rounded-full border font-medium transition-all",
+                      active ? "border-transparent" : "border-border text-muted-foreground bg-transparent hover:bg-muted"
+                    )}
+                    style={active ? { background: cfg.bg, color: cfg.color, borderColor: cfg.color + "40" } : {}}
+                  >
+                    <span>{cfg.emoji}</span>
+                    {cfg.label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Unterthema */}
+          <div>
+            <label className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider block mb-1">
+              Unterthema
+            </label>
+            <input
+              type="text"
+              value={lbMeta.unterthema ?? ""}
+              onChange={(e) => setMeta(session.id, { unterthema: e.target.value })}
+              placeholder="z. B. §§ 823 ff. BGB, Deliktsrecht…"
+              className="w-full text-[11px] px-2.5 py-1.5 rounded-lg border border-border bg-slate-50 focus:bg-white focus:outline-none focus:ring-1 focus:ring-primary/20 transition-all"
+            />
+          </div>
+
+          {/* Lernziel */}
+          <div>
+            <label className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider block mb-1">
+              Lernziel
+            </label>
+            <input
+              type="text"
+              value={lbMeta.lernziel ?? ""}
+              onChange={(e) => setMeta(session.id, { lernziel: e.target.value })}
+              placeholder="Was soll ich heute können?"
+              className="w-full text-[11px] px-2.5 py-1.5 rounded-lg border border-border bg-slate-50 focus:bg-white focus:outline-none focus:ring-1 focus:ring-primary/20 transition-all"
+            />
+          </div>
+
+          {/* Notizen */}
+          <div>
+            <label className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider block mb-1">
+              Notizen
+            </label>
+            <textarea
+              value={lbMeta.notizen ?? ""}
+              onChange={(e) => setMeta(session.id, { notizen: e.target.value })}
+              placeholder="Wichtige Hinweise, Probleme, Gedanken…"
+              rows={3}
+              className="w-full text-[11px] px-2.5 py-1.5 rounded-lg border border-border bg-slate-50 focus:bg-white focus:outline-none focus:ring-1 focus:ring-primary/20 transition-all resize-none"
+            />
           </div>
         </div>
 
