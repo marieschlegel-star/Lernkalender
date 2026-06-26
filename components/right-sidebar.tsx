@@ -6,7 +6,8 @@ import { cn, daysUntil, countdownLabel, formatDuration, getFachColors, calcEffek
 import { Progress } from "@/components/ui/progress";
 import { PremiumSlider } from "@/components/premium-slider";
 import { useDayStore } from "@/lib/day-store";
-import { usePomodoroStore } from "@/lib/pomodoro-store";
+import { loadPomoLog } from "@/lib/timer-state";
+import { getISOWeek, getYear } from "date-fns";
 import type { Klausur, Todo, LernSession, PomodoroSession, Fach, DayTyp } from "@/lib/types";
 import { TAGESTYP_CONFIG } from "@/lib/types";
 import { format, parseISO, startOfWeek, endOfWeek, isWithinInterval, isToday, startOfDay } from "date-fns";
@@ -227,7 +228,6 @@ const MAX_SLIDER_H = 40;
 
 function LernfortschrittWidget({ sessions, pomodoros }: { sessions: LernSession[]; pomodoros: PomodoroSession[] }) {
   const [open, setOpen] = useState(true);
-  const { getCurrentWeekMinutes } = usePomodoroStore();
 
   const now = new Date();
   const weekStart = startOfWeek(now, { weekStartsOn: 1 });
@@ -244,9 +244,16 @@ function LernfortschrittWidget({ sessions, pomodoros }: { sessions: LernSession[
     try { return isWithinInterval(parseISO(p.start), { start: weekStart, end: weekEnd }); }
     catch { return false; }
   });
-  // Notion-Pomodoros + lokal abgeschlossene Timer-Sessions
+  // Notion-Pomodoros + lokale PomoLog-Einträge dieser KW
   const notionMinutes = weekPomodoros.reduce((acc, p) => acc + p.dauerMin, 0);
-  const autoAbsolviert = (notionMinutes + getCurrentWeekMinutes()) / 60;
+  const thisWeek = `${getYear(weekStart)}-W${String(getISOWeek(weekStart)).padStart(2, "0")}`;
+  const localMinutes = loadPomoLog()
+    .filter((e) => {
+      const d = e.end.slice(0, 10);
+      return `${getYear(new Date(d))}-W${String(getISOWeek(new Date(d))).padStart(2, "0")}` === thisWeek;
+    })
+    .reduce((acc, e) => acc + e.durationMin, 0);
+  const autoAbsolviert = (notionMinutes + localMinutes) / 60;
 
   const [manualGeplant, setManualGeplant] = useState<number | null>(null);
   const [manualAbsolviert, setManualAbsolviert] = useState<number | null>(null);

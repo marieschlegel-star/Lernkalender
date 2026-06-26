@@ -1,7 +1,8 @@
 "use client";
 
 import { useRef } from "react";
-import { ChevronLeft, ChevronRight, Plus, Calendar } from "lucide-react";
+import Link from "next/link";
+import { ChevronLeft, ChevronRight, Plus, Timer } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAppStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
@@ -82,6 +83,14 @@ export function Topbar({ calRef, title, onNewLernblock }: TopbarProps) {
             </button>
           ))}
         </div>
+
+        <Link
+          href="/fokus"
+          className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg border border-violet-200 bg-violet-50 text-violet-700 hover:bg-violet-100 transition-colors"
+        >
+          <Timer className="h-3.5 w-3.5" />
+          Fokus-Timer
+        </Link>
 
         <Button size="sm" onClick={onNewLernblock} className="gap-1">
           <Plus className="h-3.5 w-3.5" />
