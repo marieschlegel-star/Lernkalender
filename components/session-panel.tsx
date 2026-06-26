@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { X, Brain, HelpCircle, List, CreditCard, PenLine, Calendar, ExternalLink, FileText, Loader2 } from "lucide-react";
+import { X, Brain, HelpCircle, List, CreditCard, PenLine, Calendar, ExternalLink, FileText, Loader2, Trash2 } from "lucide-react";
 import { cn, daysUntil, countdownLabel, getFachColors, formatDuration, priorityDot } from "@/lib/utils";
 import { FachChip } from "./fach-chip";
 import { Button } from "@/components/ui/button";
@@ -16,6 +16,7 @@ interface SessionPanelProps {
   klausuren: Klausur[];
   pomodoros: PomodoroSession[];
   onClose: () => void;
+  onDelete?: (id: string) => void;
 }
 
 const STATUS_LABELS: Record<string, string> = {
@@ -40,11 +41,12 @@ const AI_BUTTONS: { action: AIAction; label: string; icon: React.ReactNode; warn
   { action: "optimieren", label: "Plan optimieren", icon: <Calendar className="h-3.5 w-3.5" /> },
 ];
 
-export function SessionPanel({ session, klausuren, pomodoros, onClose }: SessionPanelProps) {
+export function SessionPanel({ session, klausuren, pomodoros, onClose, onDelete }: SessionPanelProps) {
   const { aiCallCount, incrementAiCallCount } = useAppStore();
   const [messages, setMessages] = useState<AIMessage[]>([]);
   const [loading, setLoading] = useState<AIAction | null>(null);
   const [activeAction, setActiveAction] = useState<AIAction | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState(false);
 
   const linkedKlausuren = klausuren.filter((k) => session.klausurenIds.includes(k.id));
   const sessionPomodoros = pomodoros.filter((p) => session.pomodoroIds.includes(p.id));
@@ -107,9 +109,36 @@ export function SessionPanel({ session, klausuren, pomodoros, onClose }: Session
           <FachChip fach={session.subject} />
           <span className="text-sm font-semibold text-foreground truncate">{session.title}</span>
         </div>
-        <button onClick={onClose} className="p-1 rounded hover:bg-muted transition-colors shrink-0">
-          <X className="h-4 w-4 text-muted-foreground" />
-        </button>
+        <div className="flex items-center gap-1 shrink-0">
+          {confirmDelete ? (
+            <div className="flex items-center gap-1.5 mr-1">
+              <span className="text-[11px] text-red-600 font-medium">Löschen?</span>
+              <button
+                onClick={() => { onDelete?.(session.id); onClose(); }}
+                className="text-[11px] font-semibold px-2 py-0.5 rounded-md bg-red-500 text-white hover:bg-red-600 transition-colors"
+              >
+                Ja
+              </button>
+              <button
+                onClick={() => setConfirmDelete(false)}
+                className="text-[11px] font-medium px-2 py-0.5 rounded-md bg-muted text-muted-foreground hover:bg-muted/80 transition-colors"
+              >
+                Nein
+              </button>
+            </div>
+          ) : (
+            <button
+              onClick={() => setConfirmDelete(true)}
+              title="Lerneinheit löschen"
+              className="p-1 rounded hover:bg-red-50 text-muted-foreground hover:text-red-500 transition-colors"
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+            </button>
+          )}
+          <button onClick={onClose} className="p-1 rounded hover:bg-muted transition-colors">
+            <X className="h-4 w-4 text-muted-foreground" />
+          </button>
+        </div>
       </div>
 
       <div className="flex-1 overflow-y-auto">

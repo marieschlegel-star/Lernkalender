@@ -112,6 +112,28 @@ export default function HomePage() {
     },
   });
 
+  const deleteSession = useMutation({
+    mutationFn: async (id: string) => {
+      if (!USE_NOTION) return;
+      await fetch("/api/notion/sessions", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id }),
+      });
+    },
+    onMutate: async (id) => {
+      await qc.cancelQueries({ queryKey: ["sessions"] });
+      const prev = qc.getQueryData<LernSession[]>(["sessions"]);
+      qc.setQueryData<LernSession[]>(["sessions"], (old) =>
+        old?.filter((s) => s.id !== id) ?? []
+      );
+      return { prev };
+    },
+    onError: (_e, _v, ctx) => {
+      if (ctx?.prev) qc.setQueryData(["sessions"], ctx.prev);
+    },
+  });
+
   const completeTodo = useMutation({
     mutationFn: async ({ id, completed }: { id: string; completed: boolean }) => {
       if (!USE_NOTION) return;
@@ -325,6 +347,10 @@ export default function HomePage() {
             klausuren={klausuren}
             pomodoros={DUMMY_POMODOROS}
             onClose={() => setSelectedSessionId(null)}
+            onDelete={(id) => {
+              deleteSession.mutate(id);
+              setSelectedSessionId(null);
+            }}
           />
         ) : (
           <RightSidebar
