@@ -6,6 +6,7 @@ import { cn, daysUntil, countdownLabel, formatDuration, getFachColors, calcEffek
 import { Progress } from "@/components/ui/progress";
 import { PremiumSlider } from "@/components/premium-slider";
 import { useDayStore } from "@/lib/day-store";
+import { usePomodoroStore } from "@/lib/pomodoro-store";
 import type { Klausur, Todo, LernSession, PomodoroSession, Fach, DayTyp } from "@/lib/types";
 import { TAGESTYP_CONFIG } from "@/lib/types";
 import { format, parseISO, startOfWeek, endOfWeek, isWithinInterval, isToday, startOfDay } from "date-fns";
@@ -226,6 +227,7 @@ const MAX_SLIDER_H = 40;
 
 function LernfortschrittWidget({ sessions, pomodoros }: { sessions: LernSession[]; pomodoros: PomodoroSession[] }) {
   const [open, setOpen] = useState(true);
+  const { getCurrentWeekMinutes } = usePomodoroStore();
 
   const now = new Date();
   const weekStart = startOfWeek(now, { weekStartsOn: 1 });
@@ -242,7 +244,9 @@ function LernfortschrittWidget({ sessions, pomodoros }: { sessions: LernSession[
     try { return isWithinInterval(parseISO(p.start), { start: weekStart, end: weekEnd }); }
     catch { return false; }
   });
-  const autoAbsolviert = weekPomodoros.reduce((acc, p) => acc + p.dauerMin, 0) / 60;
+  // Notion-Pomodoros + lokal abgeschlossene Timer-Sessions
+  const notionMinutes = weekPomodoros.reduce((acc, p) => acc + p.dauerMin, 0);
+  const autoAbsolviert = (notionMinutes + getCurrentWeekMinutes()) / 60;
 
   const [manualGeplant, setManualGeplant] = useState<number | null>(null);
   const [manualAbsolviert, setManualAbsolviert] = useState<number | null>(null);

@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { X, Play, Pause, RotateCcw, SkipForward, Timer } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { FachChip } from "./fach-chip";
+import { usePomodoroStore } from "@/lib/pomodoro-store";
 import type { LernSession } from "@/lib/types";
 
 // ─── Konfiguration ───────────────────────────────────────────────────
@@ -48,6 +49,7 @@ export function PomodoroTimer({ session, onClose }: PomodoroTimerProps) {
   const [pomodoros, setPomodoros]   = useState(0); // sessions finished today
   const [cycle, setCycle]           = useState(0);  // work rounds since last long break
   const intervalRef                 = useRef<NodeJS.Timeout | null>(null);
+  const { addMinutes }              = usePomodoroStore();
 
   const total   = DURATIONS[mode];
   const elapsed = total - timeLeft;
@@ -67,6 +69,7 @@ export function PomodoroTimer({ session, onClose }: PomodoroTimerProps) {
         // Session ended
         setRunning(false);
         if (mode === "work") {
+          addMinutes(25); // → aktualisiert "Absolviert" in der Sidebar automatisch
           setPomodoros((n) => n + 1);
           const newCycle = cycle + 1;
           setCycle(newCycle);
