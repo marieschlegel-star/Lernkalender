@@ -3,10 +3,9 @@
 import { useEffect, useRef, useState } from "react";
 import { Draggable } from "@fullcalendar/interaction";
 import { useAppStore } from "@/lib/store";
-import { useThemenStore } from "@/lib/themen-store";
 import { getFachColors, cn } from "@/lib/utils";
 import type { Fach, TodoKategorie, LernSession, Todo } from "@/lib/types";
-import { GripVertical, ChevronDown, ChevronRight, Plus, X } from "lucide-react";
+import { GripVertical, ChevronDown, ChevronRight } from "lucide-react";
 
 const ALL_FAECHER: Fach[] = ["ZPO", "ZivR", "ZPO III", "StrafR", "StPO", "VwR", "VwGO"];
 const ALL_KATEGORIEN: TodoKategorie[] = ["Lernen", "KK", "AssK", "AG"];
@@ -42,7 +41,6 @@ export function LeftSidebar({ sessions, todos }: LeftSidebarProps) {
 
   const chipsRef = useRef<HTMLDivElement>(null);
 
-  const [showThemen, setShowThemen] = useState(true);
   const [showFilter, setShowFilter] = useState(false);
   const [showSessions, setShowSessions] = useState(true);
   const [showTodos, setShowTodos] = useState(false);
@@ -84,32 +82,18 @@ export function LeftSidebar({ sessions, todos }: LeftSidebarProps) {
       {/* ── Scrollable content ──────────────────────────────────────── */}
       <div className="flex-1 overflow-y-auto" ref={chipsRef}>
 
-        {/* ── THEMEN (Drag-to-Create) ───────────────────────────────── */}
-        <div className="px-2 pt-2 pb-1">
-          <button
-            className="w-full flex items-center justify-between px-1 py-1 text-[9px] font-semibold text-muted-foreground uppercase tracking-wider hover:text-foreground transition-colors"
-            onClick={() => setShowThemen((v) => !v)}
-          >
-            <span>Themen · in Kalender ziehen</span>
-            {showThemen ? <ChevronDown className="h-2.5 w-2.5" /> : <ChevronRight className="h-2.5 w-2.5" />}
-          </button>
-          {showThemen && <ThemenSection />}
-        </div>
-
-        {/* ── KALENDER / FILTER ─────────────────────────────────────── */}
-        <div className="border-t border-border mx-2 my-1" />
+        {/* ── KALENDER ──────────────────────────────────────────────── */}
         <div className="px-2 pt-1 pb-1">
           <button
             className="w-full flex items-center justify-between px-1 py-1 text-[9px] font-semibold text-muted-foreground uppercase tracking-wider hover:text-foreground transition-colors"
             onClick={() => setShowFilter((v) => !v)}
           >
-            <span>Kalender & Filter</span>
+            <span>Kalender</span>
             {showFilter ? <ChevronDown className="h-2.5 w-2.5" /> : <ChevronRight className="h-2.5 w-2.5" />}
           </button>
 
           {showFilter && (
             <div className="space-y-2 mt-1">
-              {/* Visibility toggles */}
               <div className="space-y-0.5">
                 <CalToggle label="Lernplan"  color="#534AB7" active={visibility.lernplan}  onClick={toggleLernplan} />
                 <CalToggle label="Klausuren" color="#A32D2D" active={visibility.klausuren} onClick={toggleKlausuren} />
@@ -118,7 +102,6 @@ export function LeftSidebar({ sessions, todos }: LeftSidebarProps) {
 
               <div className="border-t border-border" />
 
-              {/* Google */}
               <div>
                 <div className="flex items-center gap-1 mb-0.5 px-1">
                   <svg className="h-2.5 w-2.5" viewBox="0 0 24 24" fill="none">
@@ -132,50 +115,6 @@ export function LeftSidebar({ sessions, todos }: LeftSidebarProps) {
                 <CalToggle label="Privat"     color="#888780" active={true} onClick={() => {}} />
                 <CalToggle label="Uni / Ref"  color="#5F5E5A" active={true} onClick={() => {}} />
                 <CalToggle label="AG / Kurse" color="#444441" active={true} onClick={() => {}} />
-              </div>
-
-              <div className="border-t border-border" />
-
-              {/* Fach filter */}
-              <div>
-                <p className="text-[9px] font-semibold text-muted-foreground uppercase tracking-wider px-1 mb-1">Fächer</p>
-                <div className="flex flex-wrap gap-1">
-                  {ALL_FAECHER.map((f) => {
-                    const active = activeFaecher.includes(f);
-                    const colors = getFachColors(f);
-                    return (
-                      <button
-                        key={f}
-                        onClick={() => toggleFach(f)}
-                        className="rounded-full px-1.5 py-0.5 text-[10px] font-medium transition-opacity"
-                        style={{ background: active ? colors.bg : "#F1F5F9", color: active ? colors.text : "#94a3b8" }}
-                      >
-                        {f}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* Kategorie filter */}
-              <div>
-                <p className="text-[9px] font-semibold text-muted-foreground uppercase tracking-wider px-1 mb-1">Kategorien</p>
-                <div className="flex flex-wrap gap-1">
-                  {ALL_KATEGORIEN.map((k) => {
-                    const active = activeKategorien.includes(k);
-                    const colors = KATEGORIE_COLORS[k];
-                    return (
-                      <button
-                        key={k}
-                        onClick={() => toggleTodoKategorie(k)}
-                        className="rounded-full px-1.5 py-0.5 text-[10px] font-medium transition-opacity"
-                        style={{ background: active ? colors.bg : "#F1F5F9", color: active ? colors.text : "#94a3b8" }}
-                      >
-                        {k}
-                      </button>
-                    );
-                  })}
-                </div>
               </div>
             </div>
           )}
@@ -193,13 +132,31 @@ export function LeftSidebar({ sessions, todos }: LeftSidebarProps) {
           </button>
         </div>
         {showSessions && (
-          <div className="px-2 pb-2 space-y-0.5">
-            {filteredSessions.map((s) => (
-              <SessionChip key={s.id} session={s} />
-            ))}
-            {filteredSessions.length === 0 && (
-              <p className="text-[10px] text-muted-foreground px-1 py-1">Keine offenen Einheiten</p>
-            )}
+          <div className="px-2 pb-2">
+            <div className="flex flex-wrap gap-1 mb-2">
+              {ALL_FAECHER.map((f) => {
+                const active = activeFaecher.includes(f);
+                const colors = getFachColors(f);
+                return (
+                  <button
+                    key={f}
+                    onClick={() => toggleFach(f)}
+                    className="rounded-full px-1.5 py-0.5 text-[10px] font-medium transition-opacity"
+                    style={{ background: active ? colors.bg : "#F1F5F9", color: active ? colors.text : "#94a3b8" }}
+                  >
+                    {f}
+                  </button>
+                );
+              })}
+            </div>
+            <div className="space-y-0.5">
+              {filteredSessions.map((s) => (
+                <SessionChip key={s.id} session={s} />
+              ))}
+              {filteredSessions.length === 0 && (
+                <p className="text-[10px] text-muted-foreground px-1 py-1">Keine offenen Einheiten</p>
+              )}
+            </div>
           </div>
         )}
 
@@ -215,122 +172,36 @@ export function LeftSidebar({ sessions, todos }: LeftSidebarProps) {
           </button>
         </div>
         {showTodos && (
-          <div className="px-2 pb-4 space-y-0.5">
-            {filteredTodos.map((t) => (
-              <TodoChip key={t.id} todo={t} />
-            ))}
-            {filteredTodos.length === 0 && (
-              <p className="text-[10px] text-muted-foreground px-1 py-1">Keine offenen To-Dos</p>
-            )}
+          <div className="px-2 pb-4">
+            <div className="flex flex-wrap gap-1 mb-2">
+              {ALL_KATEGORIEN.map((k) => {
+                const active = activeKategorien.includes(k);
+                const colors = KATEGORIE_COLORS[k];
+                return (
+                  <button
+                    key={k}
+                    onClick={() => toggleTodoKategorie(k)}
+                    className="rounded-full px-1.5 py-0.5 text-[10px] font-medium transition-opacity"
+                    style={{ background: active ? colors.bg : "#F1F5F9", color: active ? colors.text : "#94a3b8" }}
+                  >
+                    {k}
+                  </button>
+                );
+              })}
+            </div>
+            <div className="space-y-0.5">
+              {filteredTodos.map((t) => (
+                <TodoChip key={t.id} todo={t} />
+              ))}
+              {filteredTodos.length === 0 && (
+                <p className="text-[10px] text-muted-foreground px-1 py-1">Keine offenen To-Dos</p>
+              )}
+            </div>
           </div>
         )}
 
       </div>
     </aside>
-  );
-}
-
-// ─── Themen Section (Rechtsgebiete mit eigenen Unterthemen) ─────────
-function ThemenSection() {
-  const { gruppen, addThema, removeThema } = useThemenStore();
-  const [open, setOpen] = useState<Record<string, boolean>>({});
-  const [adding, setAdding] = useState<string | null>(null);
-  const [draft, setDraft] = useState("");
-
-  const submitThema = (gruppeId: string) => {
-    const value = draft.trim();
-    if (value) addThema(gruppeId, value);
-    setDraft("");
-    // Eingabe offen lassen für schnelles Mehrfach-Eintragen
-  };
-
-  return (
-    <div className="space-y-0.5 mt-1">
-      {gruppen.map((g) => {
-        const colors = getFachColors(g.subject);
-        const isOpen = !!open[g.id];
-        return (
-          <div key={g.id}>
-            {/* Gruppen-Header */}
-            <button
-              onClick={() => setOpen((p) => ({ ...p, [g.id]: !isOpen }))}
-              className="w-full flex items-center gap-1.5 px-1.5 py-1 rounded-md hover:bg-slate-50 transition-colors"
-            >
-              <span className="text-[11px]">{g.emoji}</span>
-              <span className="flex-1 text-[10px] font-semibold text-left leading-none truncate" style={{ color: colors.text }}>
-                {g.label}
-              </span>
-              {g.themen.length > 0 && (
-                <span className="text-[8px] text-muted-foreground tabular-nums">{g.themen.length}</span>
-              )}
-              {isOpen
-                ? <ChevronDown className="h-2.5 w-2.5 text-muted-foreground shrink-0" />
-                : <ChevronRight className="h-2.5 w-2.5 text-muted-foreground shrink-0" />}
-            </button>
-
-            {isOpen && (
-              <div className="pl-3 pr-1 pb-1 space-y-0.5">
-                {/* Themen-Chips */}
-                {g.themen.map((thema) => {
-                  const eventData = JSON.stringify({
-                    title: thema,
-                    duration: "01:00:00",
-                    backgroundColor: colors.bg,
-                    borderColor: colors.border,
-                    textColor: colors.text,
-                    extendedProps: { type: "new-theme", subject: g.subject, thema },
-                  });
-                  return (
-                    <div
-                      key={thema}
-                      className="fc-draggable-chip group/chip flex items-center gap-1 rounded-md px-1.5 py-1 cursor-grab active:cursor-grabbing hover:opacity-90 transition-opacity select-none border border-transparent hover:border-slate-200"
-                      style={{ background: colors.bg + "99" }}
-                      data-event={eventData}
-                    >
-                      <GripVertical className="h-2.5 w-2.5 shrink-0 opacity-40" style={{ color: colors.text }} />
-                      <span className="flex-1 text-[10px] font-medium truncate leading-tight" style={{ color: colors.text }}>
-                        {thema}
-                      </span>
-                      <button
-                        onClick={(e) => { e.stopPropagation(); removeThema(g.id, thema); }}
-                        className="opacity-0 group-hover/chip:opacity-60 hover:!opacity-100 transition-opacity shrink-0"
-                        title="Thema entfernen"
-                      >
-                        <X className="h-2.5 w-2.5" style={{ color: colors.text }} />
-                      </button>
-                    </div>
-                  );
-                })}
-
-                {/* Inline-Eingabe / Hinzufügen */}
-                {adding === g.id ? (
-                  <input
-                    autoFocus
-                    value={draft}
-                    onChange={(e) => setDraft(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") submitThema(g.id);
-                      if (e.key === "Escape") { setAdding(null); setDraft(""); }
-                    }}
-                    onBlur={() => { submitThema(g.id); setAdding(null); }}
-                    placeholder="Thema eingeben…"
-                    className="w-full text-[10px] px-1.5 py-1 rounded-md border border-border bg-white focus:outline-none focus:ring-1 focus:ring-primary/30"
-                  />
-                ) : (
-                  <button
-                    onClick={() => { setAdding(g.id); setDraft(""); }}
-                    className="flex items-center gap-1 px-1.5 py-1 text-[10px] text-muted-foreground hover:text-foreground transition-colors w-full"
-                  >
-                    <Plus className="h-2.5 w-2.5" />
-                    Thema hinzufügen
-                  </button>
-                )}
-              </div>
-            )}
-          </div>
-        );
-      })}
-    </div>
   );
 }
 
